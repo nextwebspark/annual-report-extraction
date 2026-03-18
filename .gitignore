@@ -1,0 +1,24 @@
+# Environment
+.env
+.env.*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Claude Code
+.claude/
+
+# Data (local/generated)
+data/test.db
+data/output/
+data/*.xlsx
+
+# Node
+node_modules/
+.next/
+
+# OS
+.DS_Store

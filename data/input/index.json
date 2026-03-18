@@ -1,0 +1,261 @@
+[
+  {
+    "id": 212,
+    "document_name": "Electrical Industries Co. - Annual Report - 2023.pdf",
+    "page_count": 35,
+    "markdown_length": 84897,
+    "file": "data/record_212.md"
+  },
+  {
+    "id": 87,
+    "document_name": "Abdullah Al Othaim Investment Company_annualreport_2023.pdf",
+    "page_count": 62,
+    "markdown_length": 199387,
+    "file": "data/record_87.md"
+  },
+  {
+    "id": 86,
+    "document_name": "ACWA POWER Co. - Annual Report - 2023.pdf",
+    "page_count": 35,
+    "markdown_length": 217332,
+    "file": "data/record_86.md"
+  },
+  {
+    "id": 218,
+    "document_name": "Umm Al-Qura Cement Co. - Annual Report - 2023.pdf",
+    "page_count": 41,
+    "markdown_length": 82389,
+    "file": "data/record_218.md"
+  },
+  {
+    "id": 224,
+    "document_name": "Thimar Development Holding Co. - Annual Report - 2023.pdf",
+    "page_count": 36,
+    "markdown_length": 109609,
+    "file": "data/record_224.md"
+  },
+  {
+    "id": 230,
+    "document_name": "Yamama Cement Co. - Annual Report - 2023.pdf",
+    "page_count": 51,
+    "markdown_length": 98175,
+    "file": "data/record_230.md"
+  },
+  {
+    "id": 236,
+    "document_name": "Zahrat Al Waha for Trading Co. - Annual Report - 2023.pdf",
+    "page_count": 126,
+    "markdown_length": 318873,
+    "file": "data/record_236.md"
+  },
+  {
+    "id": 242,
+    "document_name": "The Mediterranean and Gulf Insurance and Reinsurance Co. (MEDGULF) - Annual Report - 2023.pdf",
+    "page_count": 114,
+    "markdown_length": 414194,
+    "file": "data/record_242.md"
+  },
+  {
+    "id": 248,
+    "document_name": "Sinad Holding Co. - Annual Report - 2023.pdf",
+    "page_count": 58,
+    "markdown_length": 138447,
+    "file": "data/record_248.md"
+  },
+  {
+    "id": 213,
+    "document_name": "Cenomi Retail (Fawaz Abdulaziz Alhokair Co.) - Annual Report - 2023.pdf",
+    "page_count": 50,
+    "markdown_length": 119135,
+    "file": "data/record_213.md"
+  },
+  {
+    "id": 219,
+    "document_name": "Saudi Azm for Communication and Information Technology Co. - Annual Report - 2023.pdf",
+    "page_count": 85,
+    "markdown_length": 186292,
+    "file": "data/record_219.md"
+  },
+  {
+    "id": 225,
+    "document_name": "Theeb Rent a Car Co. - Annual Report - 2023.pdf",
+    "page_count": 136,
+    "markdown_length": 326089,
+    "file": "data/record_225.md"
+  },
+  {
+    "id": 231,
+    "document_name": "Wataniya Insurance Co. - Annual Report - 2023.pdf",
+    "page_count": 88,
+    "markdown_length": 118478,
+    "file": "data/record_231.md"
+  },
+  {
+    "id": 237,
+    "document_name": "Yanbu National Petrochemical Co. (Yansab) - Annual Report - 2023.pdf",
+    "page_count": 46,
+    "markdown_length": 160221,
+    "file": "data/record_237.md"
+  },
+  {
+    "id": 243,
+    "document_name": "The National Company for Glass Industries (Zoujaj) - Annual Report - 2023.pdf",
+    "page_count": 26,
+    "markdown_length": 48784,
+    "file": "data/record_243.md"
+  },
+  {
+    "id": 249,
+    "document_name": "SHL Finance Co. - Annual Report - 2023.pdf",
+    "page_count": 70,
+    "markdown_length": 184244,
+    "file": "data/record_249.md"
+  },
+  {
+    "id": 89,
+    "document_name": "Abdullah Saad Mohammed Abo Moati for Bookstores Co.- Annual Report - 2023.pdf",
+    "page_count": 42,
+    "markdown_length": 45992,
+    "file": "data/record_89.md"
+  },
+  {
+    "id": 88,
+    "document_name": "Ades Holding Co. - Annual Report - 2023.pdf",
+    "page_count": 107,
+    "markdown_length": 502598,
+    "file": "data/record_88.md"
+  },
+  {
+    "id": 90,
+    "document_name": "Advanced Petrochemical Co. - Annual Report - 2023.pdf",
+    "page_count": 58,
+    "markdown_length": 148933,
+    "file": "data/record_90.md"
+  },
+  {
+    "id": 91,
+    "document_name": "Al Abdullatif Industrial Investment Company  (now ARTEX Industrial Investment Co) - Annual Report - 2023.pdf",
+    "page_count": 65,
+    "markdown_length": 158498,
+    "file": "data/record_91.md"
+  },
+  {
+    "id": 92,
+    "document_name": "Al Arabia (Arabian Contracting Services Co.) - Annual Report - 2023.pdf",
+    "page_count": 40,
+    "markdown_length": 168910,
+    "file": "data/input/record_92.md"
+  },
+  {
+    "id": 93,
+    "document_name": "Al Hammadi Holding - Annual Report - 2023.pdf",
+    "page_count": 49,
+    "markdown_length": 179398,
+    "file": "data/input/record_93.md"
+  },
+  {
+    "id": 94,
+    "document_name": "Al Hassan Ghazi Ibrahim Shaker Co. - Annual Report - 2023.pdf",
+    "page_count": 119,
+    "markdown_length": 409085,
+    "file": "data/input/record_94.md"
+  },
+  {
+    "id": 95,
+    "document_name": "Al Hokair Group (now BAAN Holding Group Co.) - Annual Report - 2023.pdf",
+    "page_count": 75,
+    "markdown_length": 318563,
+    "file": "data/input/record_95.md"
+  },
+  {
+    "id": 96,
+    "document_name": "Al Jouf Cement Co. - Annual Report - 2023.pdf",
+    "page_count": 67,
+    "markdown_length": 131819,
+    "file": "data/input/record_96.md"
+  },
+  {
+    "id": 97,
+    "document_name": "Al Kathiri Holding Co. - Annual Report - 2023.pdf",
+    "page_count": 27,
+    "markdown_length": 91652,
+    "file": "data/input/record_97.md"
+  },
+  {
+    "id": 98,
+    "document_name": "AL Maather REIT Fund - Annual Report - 2023.pdf",
+    "page_count": 50,
+    "markdown_length": 116900,
+    "file": "data/input/record_98.md"
+  },
+  {
+    "id": 99,
+    "document_name": "Al Mawarid Manpower Co. - Annual Report - 2023.pdf",
+    "page_count": 90,
+    "markdown_length": 138602,
+    "file": "data/input/record_99.md"
+  },
+  {
+    "id": 100,
+    "document_name": "Al Moammar Information Systems Co. - Annual Report - 2023.pdf",
+    "page_count": 62,
+    "markdown_length": 172216,
+    "file": "data/input/record_100.md"
+  },
+  {
+    "id": 101,
+    "document_name": "Al Rajhi Bank - Annual Report - 2023.pdf",
+    "page_count": 368,
+    "markdown_length": 898785,
+    "file": "data/input/record_101.md"
+  },
+  {
+    "id": 102,
+    "document_name": "Al Rajhi REIT Fund - Annual Report - 2023.pdf",
+    "page_count": 50,
+    "markdown_length": 128324,
+    "file": "data/input/record_102.md"
+  },
+  {
+    "id": 104,
+    "document_name": "Al Sagr Cooperative Insurance Co. - Annual Report - 2023.pdf",
+    "page_count": 49,
+    "markdown_length": 123058,
+    "file": "data/input/record_104.md"
+  },
+  {
+    "id": 105,
+    "document_name": "Al Yamamah Steel Industries Co. - Annual Report - 2023.pdf",
+    "page_count": 43,
+    "markdown_length": 99990,
+    "file": "data/input/record_105.md"
+  },
+  {
+    "id": 106,
+    "document_name": "AlAhli REIT Fund 1 - SNB Capital - Annual Report - 2023.pdf",
+    "page_count": 76,
+    "markdown_length": 149073,
+    "file": "data/input/record_106.md"
+  },
+  {
+    "id": 107,
+    "document_name": "Alamar Foods Co. - Annual Report - 2023.pdf",
+    "page_count": 27,
+    "markdown_length": 80615,
+    "file": "data/input/record_107.md"
+  },
+  {
+    "id": 109,
+    "document_name": "Alandalus Property Co. - Annual Report - 2023.pdf",
+    "page_count": 71,
+    "markdown_length": 172649,
+    "file": "data/input/record_109.md"
+  },
+  {
+    "id": 110,
+    "document_name": "Al-Babtain Power and Telecommunication Co. - Annual Report - 2023.pdf",
+    "page_count": 36,
+    "markdown_length": 208118,
+    "file": "data/input/record_110.md"
+  }
+]
