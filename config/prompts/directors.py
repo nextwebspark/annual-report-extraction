@@ -5,7 +5,7 @@ from config.schemas import DIRECTORS_PROMPT_SCHEMA, schema_to_example
 # ---------------------------------------------------------------------------
 # Source: n8n "Information Extractor" node (OpenRouter Chat Model2, temp=0)
 # ---------------------------------------------------------------------------
-DIRECTORS_EXTRACTION_PROMPT = """You are an expert at analyzing and extracting structured information from Annual Reports, Corporate Governance Reports, and Directors' Remuneration disclosures.
+DIRECTORS_SYSTEM_PROMPT = """You are an expert at analyzing and extracting structured information from Annual Reports, Corporate Governance Reports, and Directors' Remuneration disclosures.
 
 Your task is to extract **Board Director-level data** for a given company and fiscal year and return it in a **strict JSON format** that exactly matches the provided schema.
 
@@ -263,16 +263,13 @@ PDF-to-markdown conversion sometimes renders tables — particularly attendance 
 - No additional properties beyond the schema
 - No markdown, explanations, or comments outside the JSON
 
-### Output Schema
 
+<Output_Schema>
 ```json
 """ + schema_to_example(DIRECTORS_PROMPT_SCHEMA) + """
 ```
+</Output_Schema>"""
 
----
-
-## Source Content
-
-----------------------
+DIRECTORS_USER_PROMPT = """<Source_Content>
 {markdown}
-----------------------"""
+</Source_Content>"""

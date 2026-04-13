@@ -36,6 +36,11 @@ COMMITTEES_TEMPERATURE = 0.0
 # --- LLM output limits ---
 LLM_MAX_TOKENS = 65536
 
+# --- LLM retry / timeout ---
+LLM_MAX_RETRIES: int = int(os.environ.get("LLM_MAX_RETRIES", 3))
+LLM_BACKOFF_BASE: int = int(os.environ.get("LLM_BACKOFF_BASE", 2))
+LLM_REQUEST_TIMEOUT: int = int(os.environ.get("LLM_REQUEST_TIMEOUT", 300))
+
 # --- Supabase table names ---
 TABLE_LANDING_CACHE = "landing_parse_cache"
 TABLE_COMPANIES = "companies"

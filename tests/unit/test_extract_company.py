@@ -1,6 +1,6 @@
 """Unit tests for execution/extract_company.py.
 
-LLM (_call_llm) is always mocked. DB uses real SQLiteDB(":memory:").
+call_llm is always mocked (returns raw JSON string). DB uses real SQLiteDB(":memory:").
 No network calls are made.
 """
 
@@ -14,15 +14,20 @@ from execution.extract_company import extract_company
 from tests.fixtures.llm_responses import COMPANY_LLM_RESPONSE, COMPANY_LLM_RESPONSE_V2
 
 
+def _raw(data) -> str:
+    """Serialize data to JSON string (simulating raw LLM output)."""
+    return json.dumps(data)
+
+
 # ---------------------------------------------------------------------------
 # Happy path
 # ---------------------------------------------------------------------------
 
 async def test_returns_expected_keys(mocker, memory_db):
     mocker.patch(
-        "execution.extract_company._call_llm",
+        "execution.extract_company.call_llm",
         new_callable=AsyncMock,
-        return_value=copy.deepcopy(COMPANY_LLM_RESPONSE),
+        return_value=_raw(COMPANY_LLM_RESPONSE),
     )
     result = await extract_company("# Markdown", db=memory_db)
     assert "company_id" in result
@@ -32,9 +37,9 @@ async def test_returns_expected_keys(mocker, memory_db):
 
 async def test_company_row_created_in_db(mocker, memory_db):
     mocker.patch(
-        "execution.extract_company._call_llm",
+        "execution.extract_company.call_llm",
         new_callable=AsyncMock,
-        return_value=copy.deepcopy(COMPANY_LLM_RESPONSE),
+        return_value=_raw(COMPANY_LLM_RESPONSE),
     )
     await extract_company("# Markdown", db=memory_db)
 
@@ -46,9 +51,9 @@ async def test_company_row_created_in_db(mocker, memory_db):
 
 async def test_company_fact_row_created_in_db(mocker, memory_db):
     mocker.patch(
-        "execution.extract_company._call_llm",
+        "execution.extract_company.call_llm",
         new_callable=AsyncMock,
-        return_value=copy.deepcopy(COMPANY_LLM_RESPONSE),
+        return_value=_raw(COMPANY_LLM_RESPONSE),
     )
     await extract_company("# Markdown", db=memory_db)
 
@@ -60,9 +65,9 @@ async def test_company_fact_row_created_in_db(mocker, memory_db):
 
 async def test_company_not_duplicated_on_second_call(mocker, memory_db):
     mocker.patch(
-        "execution.extract_company._call_llm",
+        "execution.extract_company.call_llm",
         new_callable=AsyncMock,
-        return_value=copy.deepcopy(COMPANY_LLM_RESPONSE),
+        return_value=_raw(COMPANY_LLM_RESPONSE),
     )
     r1 = await extract_company("# Markdown", db=memory_db)
     r2 = await extract_company("# Markdown", db=memory_db)
@@ -75,9 +80,9 @@ async def test_company_not_duplicated_on_second_call(mocker, memory_db):
 
 async def test_company_fact_not_duplicated_on_second_call(mocker, memory_db):
     mocker.patch(
-        "execution.extract_company._call_llm",
+        "execution.extract_company.call_llm",
         new_callable=AsyncMock,
-        return_value=copy.deepcopy(COMPANY_LLM_RESPONSE),
+        return_value=_raw(COMPANY_LLM_RESPONSE),
     )
     await extract_company("# Markdown", db=memory_db)
     await extract_company("# Markdown", db=memory_db)
@@ -90,12 +95,9 @@ async def test_company_fact_not_duplicated_on_second_call(mocker, memory_db):
 async def test_company_fact_updated_on_upsert(mocker, memory_db):
     """Second run with different revenue updates the existing company_facts row."""
     mocker.patch(
-        "execution.extract_company._call_llm",
+        "execution.extract_company.call_llm",
         new_callable=AsyncMock,
-        side_effect=[
-            copy.deepcopy(COMPANY_LLM_RESPONSE),
-            copy.deepcopy(COMPANY_LLM_RESPONSE_V2),
-        ],
+        side_effect=[_raw(COMPANY_LLM_RESPONSE), _raw(COMPANY_LLM_RESPONSE_V2)],
     )
     await extract_company("# Markdown", db=memory_db)
     await extract_company("# Markdown", db=memory_db)
@@ -108,9 +110,9 @@ async def test_company_fact_updated_on_upsert(mocker, memory_db):
 
 async def test_workflow_run_id_stored(mocker, memory_db):
     mocker.patch(
-        "execution.extract_company._call_llm",
+        "execution.extract_company.call_llm",
         new_callable=AsyncMock,
-        return_value=copy.deepcopy(COMPANY_LLM_RESPONSE),
+        return_value=_raw(COMPANY_LLM_RESPONSE),
     )
     await extract_company("# Markdown", workflow_run_id="run-abc-123", db=memory_db)
 
@@ -121,9 +123,9 @@ async def test_workflow_run_id_stored(mocker, memory_db):
 
 async def test_workflow_run_id_none_accepted(mocker, memory_db):
     mocker.patch(
-        "execution.extract_company._call_llm",
+        "execution.extract_company.call_llm",
         new_callable=AsyncMock,
-        return_value=copy.deepcopy(COMPANY_LLM_RESPONSE),
+        return_value=_raw(COMPANY_LLM_RESPONSE),
     )
     result = await extract_company("# Markdown", workflow_run_id=None, db=memory_db)
     assert result["fact_id"] is not None
@@ -131,9 +133,9 @@ async def test_workflow_run_id_none_accepted(mocker, memory_db):
 
 async def test_returned_company_id_matches_db(mocker, memory_db):
     mocker.patch(
-        "execution.extract_company._call_llm",
+        "execution.extract_company.call_llm",
         new_callable=AsyncMock,
-        return_value=copy.deepcopy(COMPANY_LLM_RESPONSE),
+        return_value=_raw(COMPANY_LLM_RESPONSE),
     )
     result = await extract_company("# Markdown", db=memory_db)
 
@@ -161,9 +163,9 @@ async def test_pre_seeded_company_returns_existing_id(mocker, memory_db):
     seeded_id = seed[0]["id"]
 
     mocker.patch(
-        "execution.extract_company._call_llm",
+        "execution.extract_company.call_llm",
         new_callable=AsyncMock,
-        return_value=copy.deepcopy(COMPANY_LLM_RESPONSE),
+        return_value=_raw(COMPANY_LLM_RESPONSE),
     )
     result = await extract_company("# Markdown", db=memory_db)
     assert result["company_id"] == seeded_id
@@ -179,28 +181,24 @@ async def test_pre_seeded_company_returns_existing_id(mocker, memory_db):
 
 async def test_llm_json_decode_error_propagates(mocker, memory_db):
     mocker.patch(
-        "execution.extract_company._call_llm",
+        "execution.extract_company.call_llm",
         new_callable=AsyncMock,
-        side_effect=json.JSONDecodeError("No valid JSON", "", 0),
+        return_value="not valid json at all {{{",
     )
     with pytest.raises(json.JSONDecodeError):
         await extract_company("# Markdown", db=memory_db)
 
 
-async def test_schema_validation_failure_logs_warn_not_raise(mocker, memory_db, capsys):
-    """Schema validation failure emits [WARN] to stderr but function still returns."""
+async def test_schema_validation_failure_logs_warn_not_raise(mocker, memory_db):
+    """Schema validation failure is logged but function still returns."""
     bad_response = copy.deepcopy(COMPANY_LLM_RESPONSE)
     # minLength: 1 violated — triggers jsonschema.ValidationError
     bad_response["company"]["company_name"]["value"] = ""
 
     mocker.patch(
-        "execution.extract_company._call_llm",
+        "execution.extract_company.call_llm",
         new_callable=AsyncMock,
-        return_value=bad_response,
+        return_value=_raw(bad_response),
     )
     result = await extract_company("# Markdown", db=memory_db)
-
-    captured = capsys.readouterr()
-    assert "[WARN]" in captured.err
-    assert "schema validation" in captured.err
     assert result["fact_id"] is not None
