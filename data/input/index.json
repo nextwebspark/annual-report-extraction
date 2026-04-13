@@ -257,5 +257,19 @@
     "page_count": 36,
     "markdown_length": 208118,
     "file": "data/input/record_110.md"
+  },
+  {
+    "id": 362,
+    "document_name": "Yanbu Cement Co. - Annual Report - 2023.pdf",
+    "page_count": 45,
+    "markdown_length": 134702,
+    "file": "data/input/record_362.md"
+  },
+  {
+    "id": 363,
+    "document_name": "Taiba Investments Co. - Annual Report - 2023.pdf",
+    "page_count": 44,
+    "markdown_length": 140948,
+    "file": "data/input/record_363.md"
   }
 ]

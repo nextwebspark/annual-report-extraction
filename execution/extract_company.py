@@ -2,7 +2,7 @@
 """Extract company identification and financial metrics from markdown via OpenRouter.
 
 Flow:
-  1. Call Claude Opus with COMPANY_EXTRACTION_PROMPT
+  1. Call LLM with COMPANY_SYSTEM_PROMPT + COMPANY_USER_PROMPT
   2. Validate response against COMPANY_SCHEMA
   3. Get or create row in `companies` table
   4. Upsert row in `company_facts` table
@@ -19,68 +19,14 @@ import re
 import sys
 
 import jsonschema
-from openai import AsyncOpenAI
+import structlog
 
 from config import prompts, schemas, settings
 from config.db import get_db
 from execution.fetch_markdown import fetch_markdown
+from execution.llm_client import call_llm, parse_json_response
 
-
-# ---------------------------------------------------------------------------
-# LLM call
-# ---------------------------------------------------------------------------
-
-async def _call_llm(markdown: str, max_retries: int = 3) -> dict:
-    client = AsyncOpenAI(
-        api_key=settings.OPENROUTER_API_KEY,
-        base_url=settings.OPENROUTER_BASE_URL,
-    )
-    prompt_text = prompts.COMPANY_EXTRACTION_PROMPT.format(markdown=markdown)
-    for attempt in range(1, max_retries + 1):
-        response = await client.chat.completions.create(
-            model=settings.COMPANY_MODEL,
-            temperature=settings.COMPANY_TEMPERATURE,
-            max_tokens=settings.LLM_MAX_TOKENS,
-            messages=[{"role": "user", "content": prompt_text}],
-        )
-        raw = response.choices[0].message.content
-        finish_reason = response.choices[0].finish_reason
-        if raw:
-            break
-        if attempt < max_retries:
-            wait = 2 ** attempt
-            print(f"[WARN] Company LLM returned empty response (attempt {attempt}/{max_retries}, finish_reason={finish_reason}). Retrying in {wait}s...", file=sys.stderr)
-            await asyncio.sleep(wait)
-        else:
-            raise RuntimeError(f"LLM returned empty response after {max_retries} attempts. finish_reason={finish_reason}")
-    if finish_reason != "stop":
-        print(f"[WARN] Company LLM response may be truncated (finish_reason={finish_reason}). Last 200 chars: ...{raw[-200:]}", file=sys.stderr)
-    print(f"[INFO] Company LLM response: {len(raw)} chars, finish_reason={finish_reason}", file=sys.stderr)
-    return _parse_json(raw)
-
-
-def _parse_json(text: str) -> dict:
-    """Parse JSON from LLM response, extracting from markdown fences if needed."""
-    text = text.strip()
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        pass
-    fence_match = re.search(r"```(?:json)?\s*\n?(.*?)```", text, re.DOTALL)
-    if fence_match:
-        try:
-            return json.loads(fence_match.group(1).strip())
-        except json.JSONDecodeError:
-            pass
-    for start_char in ['{', '[']:
-        idx = text.rfind(start_char)
-        while idx >= 0:
-            try:
-                return json.loads(text[idx:])
-            except json.JSONDecodeError:
-                idx = text.rfind(start_char, 0, idx)
-    print(f"[WARN] Could not parse LLM response as JSON.\n  First 300 chars: {text[:300]}\n  Last 300 chars: ...{text[-300:]}", file=sys.stderr)
-    raise json.JSONDecodeError("No valid JSON found in LLM response", text, 0)
+log = structlog.get_logger()
 
 
 # ---------------------------------------------------------------------------
@@ -148,12 +94,19 @@ async def extract_company(markdown: str, workflow_run_id: str | None = None, db=
     if db is None:
         db = get_db()
 
-    extracted = await _call_llm(markdown)
+    raw = await call_llm(
+        prompts.COMPANY_SYSTEM_PROMPT,
+        prompts.COMPANY_USER_PROMPT.format(markdown=markdown),
+        model=settings.COMPANY_MODEL,
+        temperature=settings.COMPANY_TEMPERATURE,
+        task="company",
+    )
+    extracted = parse_json_response(raw)
 
     try:
         jsonschema.validate(extracted, schemas.COMPANY_SCHEMA)
     except jsonschema.ValidationError as exc:
-        print(f"[WARN] Company schema validation warning: {exc.message}", file=sys.stderr)
+        log.warning("schema_validation_failed", task="company", error=exc.message)
 
     company_id = _get_or_create_company(extracted, db)
     fact_id = _upsert_company_fact(company_id, extracted, workflow_run_id, db)
@@ -162,6 +115,9 @@ async def extract_company(markdown: str, workflow_run_id: str | None = None, db=
 
 
 if __name__ == "__main__":
+    from config.logging import configure_logging
+    configure_logging()
+
     parser = argparse.ArgumentParser(description="Extract company data and write to DB")
     parser.add_argument("--record-id", type=int, default=settings.CACHE_RECORD_ID)
     parser.add_argument("--test", action="store_true", help="Use local SQLite instead of Supabase")
@@ -183,5 +139,5 @@ if __name__ == "__main__":
             )
         )
     except Exception as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        log.error("company_extraction_failed", error=str(exc))
         sys.exit(1)

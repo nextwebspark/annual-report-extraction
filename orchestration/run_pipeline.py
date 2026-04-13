@@ -14,21 +14,24 @@ Usage:
 
 import argparse
 import asyncio
-import json
 import sys
-import traceback
 from datetime import datetime, timezone
 from pathlib import Path
+
+import structlog
 
 # Ensure project root is on the path regardless of where the script is invoked from
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config import settings
 from config.db import get_db
+from config.logging import configure_logging
 from execution.extract_committees import extract_committees
 from execution.extract_company import extract_company
 from execution.extract_directors import extract_directors
 from execution.fetch_markdown import fetch_markdown
+
+log = structlog.get_logger()
 
 
 # ---------------------------------------------------------------------------
@@ -60,13 +63,8 @@ async def _run_parallel(markdown: str, fact_id: int, db) -> dict:
         if c["member_name"] not in director_names
     ]
     if name_mismatches:
-        print(
-            f"[WARN] {len(name_mismatches)} committee member(s) not found in directors "
-            f"(may be outside-board members or name drift):",
-            file=sys.stderr,
-        )
-        for name in name_mismatches:
-            print(f"  - {name!r}", file=sys.stderr)
+        log.warning("name_crossref_mismatch",
+                    count=len(name_mismatches), names=name_mismatches)
 
     return {
         "directors_inserted": len(directors_rows),
@@ -88,21 +86,20 @@ async def run_pipeline(record_id: int, force: bool = False, test_mode: bool = Fa
     """
     db = get_db(test_mode=test_mode)
     started_at = datetime.now(tz=timezone.utc).isoformat()
-    print(f"[Pipeline] Starting record_id={record_id} at {started_at}")
-    if test_mode:
-        print(f"[Pipeline] TEST MODE — writing to SQLite ({settings.SQLITE_DB_PATH})")
+    log.info("pipeline_start", record_id=record_id, test_mode=test_mode)
 
     # Step 1 — fetch markdown (always from Supabase)
-    print("[Pipeline] Step 1/3 — Fetching markdown from Supabase...")
+    log.info("pipeline_step", step="1/3", action="fetch_markdown")
     record = fetch_markdown(record_id)
     markdown = record["markdown_llm_clean"]
     document_name = record.get("document_name", f"record_{record_id}")
     workflow_run_id = record.get("workflow_run_id")
-    print(f"[Pipeline]   document: {document_name!r}  ({len(markdown):,} chars)")
+    log.info("markdown_fetched", document=document_name, chars=len(markdown))
 
     # Idempotency check — skip if this workflow_run_id was already processed
     if not force and workflow_run_id and _already_processed(workflow_run_id, db):
-        print(f"[Pipeline] Already processed (workflow_run_id={workflow_run_id}). Skipping.")
+        log.info("pipeline_skipped", reason="already_processed",
+                 workflow_run_id=workflow_run_id)
         return {
             "record_id": record_id,
             "document_name": document_name,
@@ -112,22 +109,22 @@ async def run_pipeline(record_id: int, force: bool = False, test_mode: bool = Fa
         }
 
     # Step 2 — company extraction (sequential; fact_id needed for step 3)
-    print("[Pipeline] Step 2/3 — Extracting company & financials...")
+    log.info("pipeline_step", step="2/3", action="extract_company")
     company_result = await extract_company(markdown, workflow_run_id, db=db)
     company_id = company_result["company_id"]
     fact_id = company_result["fact_id"]
     company_name = company_result["extracted"]["company"]["company_name"]["value"]
     year = company_result["extracted"]["financials"]["year"]
-    print(f"[Pipeline]   company_id={company_id}  fact_id={fact_id}  {company_name!r} ({year})")
+    log.info("company_extracted", company_id=company_id, fact_id=fact_id,
+             company=company_name, year=year)
 
     # Step 3 — directors + committees in parallel
-    print("[Pipeline] Step 3/3 — Extracting directors & committees (parallel)...")
+    log.info("pipeline_step", step="3/3", action="extract_directors_committees")
     parallel_result = await _run_parallel(markdown, fact_id, db)
-    print(
-        f"[Pipeline]   directors={parallel_result['directors_inserted']}  "
-        f"committees={parallel_result['committees_inserted']}  "
-        f"name_mismatches={parallel_result['name_mismatches']}"
-    )
+    log.info("parallel_extracted",
+             directors=parallel_result["directors_inserted"],
+             committees=parallel_result["committees_inserted"],
+             name_mismatches=parallel_result["name_mismatches"])
 
     summary = {
         "record_id": record_id,
@@ -145,7 +142,7 @@ async def run_pipeline(record_id: int, force: bool = False, test_mode: bool = Fa
         "status": "success",
     }
 
-    print(f"[Pipeline] Done. Summary:\n{json.dumps(summary, indent=2)}")
+    log.info("pipeline_done", **{k: v for k, v in summary.items() if k != "mismatched_names"})
     return summary
 
 
@@ -154,6 +151,8 @@ async def run_pipeline(record_id: int, force: bool = False, test_mode: bool = Fa
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
+    configure_logging()
+
     parser = argparse.ArgumentParser(
         description="Run the full annual report extraction pipeline for one cache record."
     )
@@ -179,9 +178,8 @@ if __name__ == "__main__":
         summary = asyncio.run(run_pipeline(args.record_id, force=args.force, test_mode=args.test))
         sys.exit(0)
     except KeyboardInterrupt:
-        print("\n[Pipeline] Interrupted.", file=sys.stderr)
+        log.info("pipeline_interrupted")
         sys.exit(1)
-    except Exception as exc:
-        print(f"\n[Pipeline] FAILED: {exc}", file=sys.stderr)
-        traceback.print_exc()
+    except Exception:
+        log.exception("pipeline_failed")
         sys.exit(1)

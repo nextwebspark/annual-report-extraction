@@ -5,7 +5,7 @@ from config.schemas import COMMITTEES_PROMPT_SCHEMA, schema_to_example
 # ---------------------------------------------------------------------------
 # Source: n8n "Information Extractor1" node (OpenRouter Chat Model3, temp=0.2)
 # ---------------------------------------------------------------------------
-COMMITTEES_EXTRACTION_PROMPT = """# System Prompt — Board Committees Data Extraction
+COMMITTEES_SYSTEM_PROMPT = """# Board Committees Data Extraction
 
 You are an expert at analyzing and extracting structured information from Annual Reports, Corporate Governance Reports, and Board Committee disclosures.
 
@@ -233,16 +233,12 @@ PDF-to-markdown conversion sometimes renders committee attendance and membership
 - No additional properties beyond the schema
 - No markdown, explanations, or comments outside the JSON
 
-### Output Schema
-
+<Output_Schema>
 ```json
 """ + schema_to_example(COMMITTEES_PROMPT_SCHEMA) + """
 ```
+</Output_Schema>"""
 
----
-
-## Source Content
-
-----------------------
+COMMITTEES_USER_PROMPT = """<Source_Content>
 {markdown}
-----------------------"""
+</Source_Content>"""

@@ -5,7 +5,7 @@ from config.schemas import COMPANY_SCHEMA, schema_to_example
 # ---------------------------------------------------------------------------
 # Source: n8n "Company Extractor" node (OpenRouter Chat Model1, temp=0)
 # ---------------------------------------------------------------------------
-COMPANY_EXTRACTION_PROMPT = """# System Prompt: Unified Company & Financial Information Extraction
+COMPANY_SYSTEM_PROMPT = """# Unified Company & Financial Information Extraction
 
 ## Role
 
@@ -233,11 +233,6 @@ When multiple values exist for the same metric, prioritize sources in this order
 - No comments within JSON
 - UTF-8 encoding
 
-### JSON Schema
-
-```json
-""" + schema_to_example(COMPANY_SCHEMA) + """
-```
 
 ## Processing Instructions
 
@@ -255,8 +250,12 @@ When multiple values exist for the same metric, prioritize sources in this order
 12. **Structure output** as valid JSON matching the schema exactly
 13. **Return JSON only — no other text**
 
-# Document Content
+<Output_Schema>
+```json
+""" + schema_to_example(COMPANY_SCHEMA) + """
+```
+</Output_Schema>"""
 
+COMPANY_USER_PROMPT = """<Source_Content>
 {markdown}
-
----"""
+</Source_Content>"""

@@ -9,9 +9,12 @@ import argparse
 import json
 import sys
 
+import structlog
 from supabase import create_client
 
 from config import settings
+
+log = structlog.get_logger()
 
 
 def fetch_markdown(record_id: int) -> dict:
@@ -43,6 +46,9 @@ def fetch_markdown(record_id: int) -> dict:
 
 
 if __name__ == "__main__":
+    from config.logging import configure_logging
+    configure_logging()
+
     parser = argparse.ArgumentParser(description="Fetch markdown from landing_parse_cache")
     parser.add_argument("--record-id", type=int, default=settings.CACHE_RECORD_ID)
     args = parser.parse_args()
@@ -61,5 +67,5 @@ if __name__ == "__main__":
             )
         )
     except RuntimeError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        log.error("fetch_markdown_failed", error=str(exc))
         sys.exit(1)
