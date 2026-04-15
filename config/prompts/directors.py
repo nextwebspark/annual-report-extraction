@@ -80,6 +80,16 @@ Some directors — typically the CEO or Managing Director — are full-time empl
 - Rule 2e applies when the footnote signals the person **remains on the board** but receives no fees due to employment status
 - If in doubt, check the board composition table — if the person still appears there with no departure qualifier, apply Rule 2e and include them
 
+### Rule 2f — Declared But Not Paid Fees: Extract Table Amounts (CRITICAL)
+Some annual reports show actual fee amounts in the remuneration table but include a footnote or nearby statement indicating those fees were **not actually paid or disbursed** — for example:
+- "These fees have not been paid to the directors"
+
+**This is NOT a signal to set fee fields to zero or skip the record.** The disclosed table amounts represent the declared/approved remuneration — extract them exactly as shown. Record the "not paid" status in `other_remuneration_description` (e.g. "Fees declared in table but not paid — [original footnote text]").
+
+**Rule 2e vs Rule 2f:**
+- Rule 2e: table shows **dashes or zeros** → fees = `0`, explain in `other_remuneration_description`
+- Rule 2f: table shows **non-zero amounts** but narrative says not disbursed → extract amounts, note "not paid" in `other_remuneration_description`
+
 ---
 
 ## STEP 3 — NAME AUTHORITY RULE
@@ -191,6 +201,7 @@ When mapping remuneration table columns to DB fields:
 3. If a column contains a lump sum that narrative text describes as composed of sub-parts (e.g., policy says "300K board + 150K committee = 450K"), still map the full 450K to the single most appropriate DB field
 4. **Narrative/policy text** (e.g., "An annual remuneration of 300,000 is paid...") describes the company's compensation structure — it is NOT a data source for field-level extraction. Only extract values from table cells.
 5. In case of conflict between a table cell value and a narrative-stated amount, the **table cell value wins**
+6. A statement that fees were "not paid", "not disbursed", or "not transferred" does NOT override the declared table cell value. Extract the table amounts and note the "not paid" status in `other_remuneration_description`. See Rule 2f.
 
 ---
 

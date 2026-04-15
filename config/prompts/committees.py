@@ -84,6 +84,16 @@ Some committee members — typically those who are also full-time employees of t
 - Rule 2e applies when the footnote signals the person **remains on the committee** but receives no fees due to employment status
 - If in doubt, check whether the person still appears in the committee membership/attendance table for the full year — if yes, apply Rule 2e
 
+### Rule 2f — Declared But Not Paid Fees: Extract Table Amounts (CRITICAL)
+Some annual reports show actual fee amounts in the committee remuneration table but include a footnote or nearby statement indicating those fees were **not actually paid or disbursed** — for example:
+- "These fees have not been paid to the committee members"
+
+**This is NOT a signal to set fee fields to zero or skip the record.** The disclosed table amounts represent the declared/approved remuneration — extract them exactly as shown. Record the "not paid" status in `extraction_notes` of `extraction_metadata` (e.g. "Committee fees declared in table but not paid — [original footnote text]").
+
+**Rule 2e vs Rule 2f:**
+- Rule 2e: table shows **dashes or zeros** → fees = `0`, note in `extraction_notes`
+- Rule 2f: table shows **non-zero amounts** but narrative says not disbursed → extract amounts, note "not paid" in `extraction_notes`
+
 ---
 
 ## STEP 3 — NAME AUTHORITY RULE
@@ -175,7 +185,7 @@ These are additive and represent two different compensation events. Never merge 
 - All monetary fields for a given record must use the same currency
 
 ### Table Data Priority Rule
-Extract fee values directly from committee remuneration table cells. Never infer or calculate committee fees from narrative policy descriptions (e.g., "each member receives 150,000"). The table contains the actual paid amounts which may differ from stated policy due to pro-rating, mid-year changes, or other adjustments.
+Extract fee values directly from committee remuneration table cells. Never infer or calculate committee fees from narrative policy descriptions (e.g., "each member receives 150,000"). The table contains the actual paid amounts which may differ from stated policy due to pro-rating, mid-year changes, or other adjustments. A statement that fees were "not paid", "not disbursed", or "not transferred" does NOT override the declared table cell value — extract the amounts and note the "not paid" status in `extraction_notes`. See Rule 2f.
 
 ---
 
