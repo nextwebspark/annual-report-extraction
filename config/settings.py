@@ -42,7 +42,7 @@ LLM_BACKOFF_BASE: int = int(os.environ.get("LLM_BACKOFF_BASE", 2))
 LLM_REQUEST_TIMEOUT: int = int(os.environ.get("LLM_REQUEST_TIMEOUT", 300))
 
 # --- Supabase table names ---
-TABLE_LANDING_CACHE = "landing_parse_cache"
+TABLE_LANDING_CACHE = "landing_parse_cache_KSA-2023"
 TABLE_COMPANIES = "companies"
 TABLE_COMPANY_FACTS = "company_facts"
 TABLE_BOARD_DIRECTORS = "board_directors"

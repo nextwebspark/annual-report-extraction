@@ -1,4 +1,4 @@
-create table public.landing_parse_cache (
+create table public.landing_parse_cache_KSA-2023 (
   id bigserial not null,
   file_id character varying(255) not null,
   document_name character varying(500) not null,

@@ -54,6 +54,7 @@ python execution/extract_committees.py --record-id 84 --fact-id 12 [--test]
 - **Role changes**: Use year-end role only; never concatenate.
 - **Out-of-board committee members**: Copy name from committee table if not a director.
 - **Zero fees for mid-year joiners**: Correct if absent from all remuneration tables.
+- **Declared but not paid fees**: Extract table amounts as-is; note "not paid" in `other_remuneration_description` (directors) or `extraction_notes` (committees).
 
 ## Last Run
 
