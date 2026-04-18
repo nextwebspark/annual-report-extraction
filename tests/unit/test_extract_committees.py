@@ -12,6 +12,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 from execution.extract_committees import extract_committees
+from execution.validate import ExtractionValidationError
 from tests.fixtures.llm_responses import COMMITTEES_LLM_RESPONSE
 
 
@@ -32,8 +33,8 @@ async def test_returns_list_of_rows(mocker, seeded_fact_db):
         return_value=_raw(COMMITTEES_LLM_RESPONSE),
     )
     result = await extract_committees("# Markdown", fact_id=fact_id, db=db)
-    assert isinstance(result, list)
-    assert len(result) == 2
+    assert isinstance(result, dict)
+    assert len(result["rows"]) == 2
 
 
 async def test_committees_written_to_db(mocker, seeded_fact_db):
@@ -58,7 +59,7 @@ async def test_fact_id_injected_into_rows(mocker, seeded_fact_db):
         return_value=_raw(COMMITTEES_LLM_RESPONSE),
     )
     result = await extract_committees("# Markdown", fact_id=fact_id, db=db)
-    for row in result:
+    for row in result["rows"]:
         assert row["fact_id"] == fact_id
 
 
@@ -85,6 +86,7 @@ async def test_upsert_idempotent_on_same_triple(mocker, seeded_fact_db):
 async def test_upsert_updates_fee_on_rerun(mocker, seeded_fact_db):
     db, _, fact_id = seeded_fact_db
     updated = copy.deepcopy(COMMITTEES_LLM_RESPONSE)
+    updated[0]["committee_retainer_fee"] = 99999  # keep arithmetic consistent
     updated[0]["committee_total_fee"] = 99999
 
     mocker.patch(
@@ -112,6 +114,7 @@ async def test_same_member_two_committees_creates_two_rows(mocker, seeded_fact_d
         {
             **copy.deepcopy(COMMITTEES_LLM_RESPONSE[0]),
             "committee_name": "Remuneration Committee",
+            "committee_retainer_fee": 40000,  # keep arithmetic consistent
             "committee_total_fee": 40000,
         },
     ]
@@ -121,7 +124,7 @@ async def test_same_member_two_committees_creates_two_rows(mocker, seeded_fact_d
         return_value=_raw(two_committees),
     )
     result = await extract_committees("# Markdown", fact_id=fact_id, db=db)
-    assert len(result) == 2
+    assert len(result["rows"]) == 2
 
     from config import settings
     rows = db.select(settings.TABLE_BOARD_COMMITTEES, "*", {"member_name": "Alice Smith"})
@@ -169,7 +172,7 @@ async def test_wrapper_format_strips_extra_fields():
 # Validation integration
 # ---------------------------------------------------------------------------
 
-async def test_strict_validation_errors_logged_not_blocking(mocker, seeded_fact_db):
+async def test_strict_validation_errors_raise_and_block_write(mocker, seeded_fact_db):
     db, _, fact_id = seeded_fact_db
     bad = copy.deepcopy(COMMITTEES_LLM_RESPONSE)
     bad[0]["committee_retainer_fee"] = -100  # negative → strict error
@@ -179,9 +182,11 @@ async def test_strict_validation_errors_logged_not_blocking(mocker, seeded_fact_
         new_callable=AsyncMock,
         return_value=_raw(bad),
     )
-    result = await extract_committees("# Markdown", fact_id=fact_id, db=db)
-    # Data written despite validation error
-    assert len(result) == 2
+    with pytest.raises(ExtractionValidationError):
+        await extract_committees("# Markdown", fact_id=fact_id, db=db)
+
+    rows = db.select("board_committees", "*", {"fact_id": fact_id})
+    assert rows == []
 
 
 async def test_soft_warnings_logged_not_blocking(mocker, seeded_fact_db):
@@ -196,7 +201,7 @@ async def test_soft_warnings_logged_not_blocking(mocker, seeded_fact_db):
     )
     result = await extract_committees("# Markdown", fact_id=fact_id, db=db)
     # Data written despite warning
-    assert len(result) == 2
+    assert len(result["rows"]) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -215,7 +220,7 @@ async def test_retry_on_empty_response(mocker, seeded_fact_db):
 
     result = await extract_committees("# Markdown", fact_id=fact_id, db=db)
     assert mock_create.call_count == 2
-    assert len(result) == 2
+    assert len(result["rows"]) == 2
 
 
 async def test_retry_exhausted_raises_runtime_error(mocker, seeded_fact_db):

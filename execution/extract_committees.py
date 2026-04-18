@@ -26,7 +26,11 @@ from config import prompts, schemas, settings
 from config.db import get_db
 from execution.fetch_markdown import fetch_markdown
 from execution.llm_client import call_llm, parse_json_response
-from execution.validate import validate_committees_strict, validate_committees_soft
+from execution.validate import (
+    ExtractionValidationError,
+    validate_committees_soft,
+    validate_committees_strict,
+)
 
 log = structlog.get_logger()
 
@@ -67,15 +71,6 @@ def _parse_committees_response(text: str) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# DB writes
-# ---------------------------------------------------------------------------
-
-def _save_committees(fact_id: int, committees: list[dict], db) -> list[dict]:
-    rows = [{**c, "fact_id": fact_id} for c in committees]
-    return db.upsert(settings.TABLE_BOARD_COMMITTEES, rows, on_conflict="fact_id,member_name,committee_name")
-
-
-# ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
 
@@ -88,10 +83,18 @@ async def extract_committees(markdown: str, fact_id: int, db=None) -> list[dict]
         db:       Database instance (SupabaseDB or SQLiteDB). Auto-created if None.
 
     Returns:
-        List of inserted board_committees rows.
+        {"rows": list[dict], "warnings": list[str]}
     """
     if db is None:
         db = get_db()
+
+    def _validate(raw: str) -> None:
+        rows = [{**c, "fact_id": fact_id} for c in _parse_committees_response(raw)]
+        try:
+            jsonschema.validate(rows, schemas.COMMITTEES_SCHEMA)
+        except jsonschema.ValidationError as exc:
+            log.error("schema_validation_failed", task="committees", error=exc.message)
+            raise
 
     raw = await call_llm(
         prompts.COMMITTEES_SYSTEM_PROMPT,
@@ -99,23 +102,22 @@ async def extract_committees(markdown: str, fact_id: int, db=None) -> list[dict]
         model=settings.COMMITTEES_MODEL,
         temperature=settings.COMMITTEES_TEMPERATURE,
         task="committees",
+        validate_fn=_validate,
     )
     committees = _parse_committees_response(raw)
+    rows = [{**c, "fact_id": fact_id} for c in committees]
 
-    try:
-        jsonschema.validate(committees, schemas.COMMITTEES_SCHEMA)
-    except jsonschema.ValidationError as exc:
-        log.warning("schema_validation_failed", task="committees", error=exc.message)
-
-    errors = validate_committees_strict(committees)
+    errors = validate_committees_strict(rows)
     if errors:
-        log.warning("strict_validation_issues", task="committees", count=len(errors), errors=errors)
+        log.error("strict_validation_failed", task="committees", count=len(errors), errors=errors)
+        raise ExtractionValidationError("committees", errors)
 
-    for w in validate_committees_soft(committees):
+    soft_warnings = validate_committees_soft(rows)
+    for w in soft_warnings:
         log.warning("soft_validation", task="committees", issue=w)
 
-    inserted = _save_committees(fact_id, committees, db)
-    return inserted
+    inserted = db.upsert(settings.TABLE_BOARD_COMMITTEES, rows, on_conflict="fact_id,member_name,committee_name")
+    return {"rows": inserted, "warnings": soft_warnings}
 
 
 if __name__ == "__main__":
@@ -133,8 +135,8 @@ if __name__ == "__main__":
     try:
         db = get_db(test_mode=args.test)
         record = fetch_markdown(args.record_id)
-        rows = asyncio.run(extract_committees(record["markdown_llm_clean"], args.fact_id, db=db))
-        print(json.dumps({"committees_inserted": len(rows)}, indent=2))
+        result = asyncio.run(extract_committees(record["markdown_llm_clean"], args.fact_id, db=db))
+        print(json.dumps({"committees_inserted": len(result["rows"]), "warnings": result["warnings"]}, indent=2))
     except Exception as exc:
         log.error("committees_extraction_failed", error=str(exc))
         sys.exit(1)

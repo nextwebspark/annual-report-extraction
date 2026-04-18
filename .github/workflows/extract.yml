@@ -1,0 +1,55 @@
+name: Extract annual reports
+
+on:
+  schedule:
+    # Nightly at 02:00 UTC
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      year:
+        description: "Source table year suffix (landing_parse_cache_KSA-<YEAR>)"
+        type: string
+        default: "2023"
+      status:
+        description: "Which records to run"
+        type: choice
+        options: [pending, failed]
+        default: pending
+      limit:
+        description: "Max records per run (leave blank for no limit)"
+        type: string
+        default: ""
+      concurrency:
+        description: "Parallel records (1-8)"
+        type: string
+        default: "4"
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      OPENROUTER_API_KEY:   ${{ secrets.OPENROUTER_API_KEY }}
+      SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      YEAR:                 ${{ inputs.year || '2023' }}
+      LOG_FORMAT:           json
+      LOG_LEVEL:            INFO
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Run batch
+        run: |
+          ARGS="--status ${{ inputs.status || 'pending' }} --concurrency ${{ inputs.concurrency || '4' }}"
+          if [ -n "${{ inputs.limit }}" ]; then
+            ARGS="$ARGS --limit ${{ inputs.limit }}"
+          fi
+          python -m orchestration.run_batch $ARGS

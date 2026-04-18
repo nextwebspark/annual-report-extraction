@@ -12,6 +12,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 from execution.extract_directors import extract_directors
+from execution.validate import ExtractionValidationError
 from tests.fixtures.llm_responses import DIRECTORS_LLM_RESPONSE
 
 
@@ -32,8 +33,8 @@ async def test_returns_list_of_rows(mocker, seeded_fact_db):
         return_value=_raw(DIRECTORS_LLM_RESPONSE),
     )
     result = await extract_directors("# Markdown", fact_id=fact_id, db=db)
-    assert isinstance(result, list)
-    assert len(result) == 2
+    assert isinstance(result, dict)
+    assert len(result["rows"]) == 2
 
 
 async def test_directors_written_to_db(mocker, seeded_fact_db):
@@ -58,7 +59,7 @@ async def test_fact_id_injected_into_rows(mocker, seeded_fact_db):
         return_value=_raw(DIRECTORS_LLM_RESPONSE),
     )
     result = await extract_directors("# Markdown", fact_id=fact_id, db=db)
-    for row in result:
+    for row in result["rows"]:
         assert row["fact_id"] == fact_id
 
 
@@ -70,7 +71,7 @@ async def test_director_names_match_llm_response(mocker, seeded_fact_db):
         return_value=_raw(DIRECTORS_LLM_RESPONSE),
     )
     result = await extract_directors("# Markdown", fact_id=fact_id, db=db)
-    names = {r["director_name"] for r in result}
+    names = {r["director_name"] for r in result["rows"]}
     assert names == {"Alice Smith", "Bob Jones"}
 
 
@@ -99,6 +100,7 @@ async def test_upsert_updates_fee_on_rerun(mocker, seeded_fact_db):
     db, _, fact_id = seeded_fact_db
 
     updated = copy.deepcopy(DIRECTORS_LLM_RESPONSE)
+    updated[0]["retainer_fee"] = 999999  # bump component so fee arithmetic remains consistent
     updated[0]["total_fee"] = 999999
 
     mocker.patch(
@@ -121,8 +123,8 @@ async def test_new_director_on_second_run_adds_row(mocker, seeded_fact_db):
     extra_director = {
         "director_name": "Carol White",
         "nationality": "Australian",
-        "ethnicity": "White",
-        "local_expat": "expat",
+        "ethnicity": "Western",
+        "local_expat": "Expat",
         "gender": "Female",
         "age": 42,
         "board_role": "Member",
@@ -198,8 +200,8 @@ async def test_extraction_metadata_notes_logged(mocker, seeded_fact_db):
 # Validation integration
 # ---------------------------------------------------------------------------
 
-async def test_strict_validation_errors_logged_not_blocking(mocker, seeded_fact_db):
-    """Invalid director data triggers validation but data is still written."""
+async def test_strict_validation_errors_raise_and_block_write(mocker, seeded_fact_db):
+    """Invalid director data raises and no rows are written."""
     db, _, fact_id = seeded_fact_db
     bad_directors = copy.deepcopy(DIRECTORS_LLM_RESPONSE)
     bad_directors[0]["board_role"] = "Observer"  # invalid role → strict error
@@ -209,8 +211,11 @@ async def test_strict_validation_errors_logged_not_blocking(mocker, seeded_fact_
         new_callable=AsyncMock,
         return_value=_raw(bad_directors),
     )
-    result = await extract_directors("# Markdown", fact_id=fact_id, db=db)
-    assert len(result) == 2  # data written despite error
+    with pytest.raises(ExtractionValidationError):
+        await extract_directors("# Markdown", fact_id=fact_id, db=db)
+
+    rows = db.select("board_directors", "*", {"fact_id": fact_id})
+    assert rows == []
 
 
 async def test_soft_warnings_logged_not_blocking(mocker, seeded_fact_db):
@@ -225,7 +230,7 @@ async def test_soft_warnings_logged_not_blocking(mocker, seeded_fact_db):
         return_value=_raw(warn_directors),
     )
     result = await extract_directors("# Markdown", fact_id=fact_id, db=db)
-    assert len(result) == 2
+    assert len(result["rows"]) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -245,7 +250,7 @@ async def test_retry_on_empty_response(mocker, seeded_fact_db):
 
     result = await extract_directors("# Markdown", fact_id=fact_id, db=db)
     assert mock_create.call_count == 2
-    assert len(result) == 2
+    assert len(result["rows"]) == 2
 
 
 async def test_retry_exhausted_raises_runtime_error(mocker, seeded_fact_db):

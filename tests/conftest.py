@@ -47,7 +47,6 @@ def seeded_fact_db():
         "company_name": {"value": "Seed Co", "confidence": 0.99, "source": "cover"},
         "exchange": {"value": "NYSE", "confidence": 0.99, "source": "cover"},
         "country": {"value": "United States", "confidence": 0.99, "source": "cover"},
-        "industry": {"value": "Technology", "confidence": 0.99, "source": "cover"},
         "source_document_url": "",
         "company_code": "seed_co",
     })

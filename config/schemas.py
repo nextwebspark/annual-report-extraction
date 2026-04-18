@@ -97,7 +97,7 @@ COMPANY_SCHEMA = {
                 "exchange": {
                     "type": "object",
                     "properties": {
-                        "value": {"type": "string"},
+                        "value": {"type": ["string", "null"]},
                         "confidence": {"type": "number", "minimum": 0, "maximum": 1},
                         "source": {"type": "string"},
                     },
@@ -114,19 +114,29 @@ COMPANY_SCHEMA = {
                     "required": ["value", "confidence"],
                     "additionalProperties": False,
                 },
-                "industry": {
+                "sector": {
                     "type": "object",
                     "properties": {
-                        "value": {"type": "string"},
+                        "value": {"type": "string", "minLength": 1},
                         "confidence": {"type": "number", "minimum": 0, "maximum": 1},
                         "source": {"type": "string"},
                     },
                     "required": ["value", "confidence"],
                     "additionalProperties": False,
                 },
-                "source_document_url": {"type": "string"},
+                "sub_sector": {
+                    "type": "object",
+                    "properties": {
+                        "value": {"type": "string", "minLength": 1},
+                        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                        "source": {"type": "string"},
+                    },
+                    "required": ["value", "confidence"],
+                    "additionalProperties": False,
+                },
+                "source_document_url": {"type": ["string", "null"]},
             },
-            "required": ["company_name", "exchange", "country", "industry"],
+            "required": ["company_name", "exchange", "country", "sector", "sub_sector"],
             "additionalProperties": False,
         },
         "financials": {
@@ -142,7 +152,7 @@ COMPANY_SCHEMA = {
                         "source": {"type": "string"},
                         "unit_stated": {
                             "type": "string",
-                            "enum": ["actual", "thousands", "millions", "billions"],
+                            "enum": ["actual", "hundred", "thousand", "ten_thousand", "hundred_thousand", "million", "billion", "trillion"],
                         },
                     },
                     "required": ["value", "currency", "confidence"],
@@ -157,14 +167,14 @@ COMPANY_SCHEMA = {
                         "source": {"type": "string"},
                         "unit_stated": {
                             "type": "string",
-                            "enum": ["actual", "thousands", "millions", "billions"],
+                            "enum": ["actual", "hundred", "thousand", "ten_thousand", "hundred_thousand", "million", "billion", "trillion"],
                         },
                     },
                     "required": ["value", "currency", "confidence"],
                     "additionalProperties": False,
                 },
                 "market_capitalisation": {
-                    "type": "object",
+                    "type": ["object", "null"],
                     "properties": {
                         "value": {"type": ["number", "null"], "minimum": 0},
                         "currency": {"type": ["string", "null"], "pattern": "^[A-Z]{3}$"},
@@ -172,14 +182,14 @@ COMPANY_SCHEMA = {
                         "source": {"type": "string"},
                         "unit_stated": {
                             "type": "string",
-                            "enum": ["actual", "thousands", "millions", "billions"],
+                            "enum": ["actual", "hundred", "thousand", "ten_thousand", "hundred_thousand", "million", "billion", "trillion"],
                         },
                     },
                     "required": ["value", "confidence"],
                     "additionalProperties": False,
                 },
                 "employees": {
-                    "type": "object",
+                    "type": ["object", "null"],
                     "properties": {
                         "value": {"type": ["integer", "null"], "minimum": 0},
                         "confidence": {"type": "number", "minimum": 0, "maximum": 1},
@@ -192,45 +202,8 @@ COMPANY_SCHEMA = {
             "required": ["year", "revenue", "profit_net"],
             "additionalProperties": False,
         },
-        "extraction_metadata": {
-            "type": "object",
-            "properties": {
-                "extracted_at": {"type": "string"},
-                "document_type": {
-                    "type": "string",
-                    "enum": [
-                        "annual_report",
-                        "10-K",
-                        "10-Q",
-                        "financial_statements",
-                        "prospectus",
-                        "investor_presentation",
-                        "other",
-                    ],
-                },
-                "fiscal_year_end": {"type": "string"},
-                "fiscal_year_ambiguous": {"type": "boolean"},
-                "reporting_standard": {
-                    "type": "string",
-                    "enum": ["IFRS", "US GAAP", "local GAAP", "other"],
-                },
-                "figures_restated": {"type": "boolean"},
-                "figures_consolidated": {"type": "boolean"},
-                "document_sections_found": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                },
-                "extraction_notes": {"type": "string"},
-                "conflicts": {
-                    "type": "array",
-                    "items": {"type": "object"},
-                },
-            },
-            "additionalProperties": False,
-        },
     },
     "required": ["company", "financials"],
-    "additionalProperties": False,
 }
 
 
@@ -244,12 +217,12 @@ _DIRECTOR_ITEM = {
         "fact_id": {"type": "integer"},
         "director_name": {"type": "string"},
         "nationality": {"type": "string"},
-        "ethnicity": {"type": "string"},
-        "local_expat": {"type": "string"},
+        "ethnicity": {"type": "string", "enum": ["Arab", "Asian", "Western", "Other"]},
+        "local_expat": {"type": "string", "enum": ["Local", "Expat", ""]},
         "gender": {"type": "string", "enum": ["Male", "Female", "not-available"]},
         "age": {"type": "integer", "minimum": 0},
-        "board_role": {"type": "string"},
-        "director_type": {"type": "string"},
+        "board_role": {"type": "string", "enum": ["Chairman", "Vice Chairman", "Member"]},
+        "director_type": {"type": "string", "enum": ["Executive", "Non-Executive", "Independent"]},
         "skills": {"type": "string"},
         "board_meetings_attended": {"type": "integer", "minimum": 0},
         "retainer_fee": {"type": "number", "minimum": 0},
@@ -336,12 +309,16 @@ _COMMITTEE_ITEM = {
         "fact_id": {"type": "integer"},
         "member_name": {"type": "string"},
         "nationality": {"type": "string"},
-        "ethnicity": {"type": "string"},
-        "local_expat": {"type": "string"},
+        "ethnicity": {"type": "string", "enum": ["Arab", "Asian", "Western", "Other"]},
+        "local_expat": {"type": "string", "enum": ["Local", "Expat", ""]},
         "gender": {"type": "string", "enum": ["Male", "Female", "not-available"]},
         "age": {"type": "integer", "minimum": 0},
-        "committee_name": {"type": "string"},
-        "committee_role": {"type": "string"},
+        "committee_name": {"type": "string", "enum": [
+            "Audit Committee", "Nomination Committee", "Remuneration Committee",
+            "Nomination and Remuneration Committee", "Risk Committee",
+            "Executive Committee", "Investment Committee", "Governance Committee", "Other",
+        ]},
+        "committee_role": {"type": "string", "enum": ["Chair", "Vice Chair", "Member", "Secretary", "Other"]},
         "committee_meetings_attended": {"type": "integer", "minimum": 0},
         "committee_retainer_fee": {"type": "number", "minimum": 0},
         "committee_allowances": {"type": "number", "minimum": 0},

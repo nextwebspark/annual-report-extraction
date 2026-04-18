@@ -25,6 +25,12 @@ class SupabaseDB:
     def insert(self, table: str, row: dict) -> list[dict]:
         return self._client.table(table).insert(row).execute().data
 
+    def update(self, table: str, row: dict, filters: dict) -> list[dict]:
+        q = self._client.table(table).update(row)
+        for col, val in filters.items():
+            q = q.eq(col, val)
+        return q.execute().data
+
     def upsert(self, table: str, rows: list[dict] | dict, on_conflict: str) -> list[dict]:
         return self._client.table(table).upsert(rows, on_conflict=on_conflict).execute().data
 
@@ -34,7 +40,7 @@ class SQLiteDB:
 
     # Columns that store JSON objects (dicts/lists) in Supabase as JSONB
     _JSON_COLUMNS = {
-        "company_name", "exchange", "country", "industry",
+        "company_name", "exchange", "country", "sector", "sub_sector",
         "revenue", "profit_net", "market_capitalisation", "employees",
     }
 
@@ -53,7 +59,8 @@ class SQLiteDB:
                 company_name TEXT NOT NULL,
                 exchange TEXT NOT NULL,
                 country TEXT NOT NULL,
-                industry TEXT NOT NULL,
+                sector TEXT,
+                sub_sector TEXT,
                 source_document_url TEXT DEFAULT '',
                 company_code TEXT UNIQUE,
                 created_at TEXT DEFAULT (datetime('now'))
@@ -67,7 +74,12 @@ class SQLiteDB:
                 profit_net TEXT NOT NULL,
                 market_capitalisation TEXT,
                 employees TEXT,
+                revenue_band INTEGER,
+                revenue_band_label TEXT,
+                employee_band INTEGER,
+                employee_band_label TEXT,
                 extraction_run_id TEXT,
+                data_version TEXT,
                 created_at TEXT DEFAULT (datetime('now')),
                 UNIQUE(company_id, year)
             );
@@ -124,6 +136,12 @@ class SQLiteDB:
         """Add columns introduced after initial schema. Idempotent."""
         migrations = [
             "ALTER TABLE board_directors ADD COLUMN assembly_fee REAL DEFAULT 0",
+            "ALTER TABLE companies ADD COLUMN sector TEXT",
+            "ALTER TABLE companies ADD COLUMN sub_sector TEXT",
+            "ALTER TABLE company_facts ADD COLUMN revenue_band INTEGER",
+            "ALTER TABLE company_facts ADD COLUMN revenue_band_label TEXT",
+            "ALTER TABLE company_facts ADD COLUMN employee_band INTEGER",
+            "ALTER TABLE company_facts ADD COLUMN employee_band_label TEXT",
         ]
         for sql in migrations:
             try:
