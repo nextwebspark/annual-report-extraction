@@ -7,6 +7,7 @@ import asyncio
 import json
 import re
 import time
+from contextvars import ContextVar
 
 import structlog
 from openai import APIConnectionError, APIError, AsyncOpenAI, RateLimitError
@@ -17,6 +18,11 @@ log = structlog.get_logger()
 
 # Module-level singleton — created lazily on first call.
 _client: AsyncOpenAI | None = None
+
+# Per-pipeline-invocation token aggregator. Set by run_pipeline at the start of
+# each record; read at the end to persist totals to the run ledger. Remains None
+# outside a pipeline context (e.g. standalone extraction scripts).
+run_token_totals: ContextVar[dict | None] = ContextVar("run_token_totals", default=None)
 
 
 def get_client() -> AsyncOpenAI:
@@ -74,6 +80,7 @@ async def call_llm(
     model: str,
     temperature: float,
     task: str = "extraction",
+    validate_fn=None,
 ) -> str:
     """Call the LLM with retry, timeout, and structured logging.
 
@@ -83,6 +90,12 @@ async def call_llm(
         model:         OpenRouter model identifier.
         temperature:   Sampling temperature.
         task:          Label for logging (e.g. "committees", "directors").
+        validate_fn:   Optional callable(raw: str) -> None. Called after a
+                       successful non-empty response. If it raises any exception
+                       the response is treated as invalid and retried (up to
+                       max_retries total attempts). Use this to retry on schema
+                       validation failures without duplicating retry logic in
+                       each extractor.
 
     Returns:
         The raw text content from the LLM response.
@@ -138,10 +151,37 @@ async def call_llm(
             log.info("llm_response",
                      task=task, chars=len(raw), finish_reason=finish_reason,
                      elapsed_s=round(elapsed, 2), attempt=attempt, **usage)
+            totals = run_token_totals.get()
+            if totals is not None and usage:
+                totals["prompt_tokens"] += usage["prompt_tokens"]
+                totals["completion_tokens"] += usage["completion_tokens"]
+                totals["total_tokens"] += usage["total_tokens"]
+                totals["models"].add(model)
             if finish_reason != "stop":
-                log.warning("llm_possibly_truncated",
-                            task=task, finish_reason=finish_reason,
-                            last_200=raw[-200:])
+                log.error("llm_truncated",
+                          task=task, finish_reason=finish_reason,
+                          last_200=raw[-200:])
+                raise RuntimeError(
+                    f"{task}: LLM output truncated (finish_reason={finish_reason}). "
+                    "Refusing to persist possibly incomplete data."
+                )
+            # Run caller-supplied validation; retry if it rejects the response
+            if validate_fn is not None:
+                try:
+                    validate_fn(raw)
+                except Exception as exc:
+                    if attempt < max_retries:
+                        wait = backoff_base ** attempt
+                        log.warning("llm_validation_failed",
+                                    task=task, attempt=attempt, error=str(exc),
+                                    retry_in_s=wait)
+                        await asyncio.sleep(wait)
+                        continue
+                    log.error("llm_validation_failed_exhausted",
+                              task=task, attempts=max_retries, error=str(exc))
+                    raise RuntimeError(
+                        f"{task}: LLM response failed validation after {max_retries} attempts: {exc}"
+                    ) from exc
             return raw
 
         # Empty response — retry

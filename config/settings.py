@@ -1,5 +1,7 @@
 """Centralised configuration. All env vars, model names, table names, and folder IDs live here."""
 
+APP_VERSION = "1.0.0"  # bump on every release — matches the git tag (vX.Y.Z)
+
 import os
 from dotenv import load_dotenv
 
@@ -19,6 +21,7 @@ SUPABASE_URL: str = _require("SUPABASE_URL")
 SUPABASE_SERVICE_KEY: str = _require("SUPABASE_SERVICE_KEY")
 # --- Pipeline defaults ---
 CACHE_RECORD_ID: int = int(os.environ.get("CACHE_RECORD_ID", 84))
+YEAR: int = int(os.environ.get("YEAR", "2023"))
 
 # --- OpenRouter ---
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
@@ -39,14 +42,15 @@ LLM_MAX_TOKENS = 65536
 # --- LLM retry / timeout ---
 LLM_MAX_RETRIES: int = int(os.environ.get("LLM_MAX_RETRIES", 3))
 LLM_BACKOFF_BASE: int = int(os.environ.get("LLM_BACKOFF_BASE", 2))
-LLM_REQUEST_TIMEOUT: int = int(os.environ.get("LLM_REQUEST_TIMEOUT", 300))
+LLM_REQUEST_TIMEOUT: int = int(os.environ.get("LLM_REQUEST_TIMEOUT", 600))
 
 # --- Supabase table names ---
-TABLE_LANDING_CACHE = "landing_parse_cache_KSA-2023"
+TABLE_LANDING_CACHE = f"landing_parse_cache_KSA-{YEAR}"
 TABLE_COMPANIES = "companies"
 TABLE_COMPANY_FACTS = "company_facts"
 TABLE_BOARD_DIRECTORS = "board_directors"
 TABLE_BOARD_COMMITTEES = "board_committees"
+TABLE_EXTRACTION_RUNS = "extraction_runs"
 
 # --- Test mode ---
 TEST_MODE: bool = os.environ.get("TEST_MODE", "").lower() in ("1", "true", "yes")

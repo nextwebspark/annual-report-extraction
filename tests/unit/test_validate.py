@@ -22,6 +22,8 @@ def make_director(**overrides) -> dict:
         "director_type": "Non-Executive",
         "gender": "Female",
         "nationality": "British",
+        "ethnicity": "Western",
+        "local_expat": "Expat",
         "skills": "Finance",
         "retainer_fee": 100000,
         "attendance_allowance": 0,
@@ -41,8 +43,11 @@ def make_committee(**overrides) -> dict:
     base = {
         "member_name": "Alice Smith",
         "committee_name": "Audit Committee",
+        "committee_role": "Chair",
         "gender": "Female",
         "nationality": "British",
+        "ethnicity": "Western",
+        "local_expat": "Expat",
         "committee_retainer_fee": 50000,
         "committee_allowances": 0,
         "committee_total_fee": 50000,
@@ -95,13 +100,13 @@ class TestValidateDirectorsStrict:
     def test_valid_genders_accepted(self, gender):
         assert validate_directors_strict([make_director(gender=gender)]) == []
 
-    def test_fee_arithmetic_mismatch_exceeding_tolerance_is_error(self):
-        # components = 100000, total = 98000, delta = 2000 > 1.0
+    def test_fee_arithmetic_mismatch_not_strict_error(self):
+        # Fee mismatch is soft (warning) not strict — strict must return no error for this
         errors = validate_directors_strict([make_director(retainer_fee=100000, total_fee=98000)])
-        assert any("total_fee" in e and "sum_of_components" in e for e in errors)
+        assert not any("sum_of_components" in e for e in errors)
 
     def test_fee_arithmetic_within_tolerance_not_error(self):
-        # components = 100001, total = 100000, delta = 1.0 — exactly at boundary
+        # components = 100001, total = 100000, delta = 1.0 — at boundary, no strict error
         errors = validate_directors_strict([make_director(retainer_fee=100001, total_fee=100000)])
         assert not any("sum_of_components" in e for e in errors)
 
@@ -114,6 +119,12 @@ class TestValidateDirectorsStrict:
         # All components=0, total>0 — skips arithmetic check
         errors = validate_directors_strict([make_director(retainer_fee=0, total_fee=100000)])
         assert not any("sum_of_components" in e for e in errors)
+
+    def test_fee_arithmetic_mismatch_is_soft_warning(self):
+        # Fee mismatch exceeding tolerance produces a soft warning
+        from execution.validate import validate_directors_soft
+        warnings = validate_directors_soft([make_director(retainer_fee=100000, total_fee=98000)])
+        assert any("total_fee" in w and "sum_of_components" in w for w in warnings)
 
     def test_negative_retainer_fee_is_error(self):
         errors = validate_directors_strict([make_director(retainer_fee=-100)])
@@ -201,12 +212,19 @@ class TestValidateCommitteesStrict:
     def test_valid_genders_accepted(self, gender):
         assert validate_committees_strict([make_committee(gender=gender)]) == []
 
-    def test_fee_arithmetic_mismatch_exceeding_tolerance_is_error(self):
-        # retainer=50000, allowances=0, total=47000, delta=3000 > 1.0
+    def test_fee_arithmetic_mismatch_not_strict_error(self):
+        # Fee arithmetic is soft (warning) not strict — strict must return no error for this
         errors = validate_committees_strict([make_committee(
             committee_retainer_fee=50000, committee_allowances=0, committee_total_fee=47000
         )])
-        assert any("committee_total_fee" in e for e in errors)
+        assert not any("committee_total_fee" in e for e in errors)
+
+    def test_fee_arithmetic_mismatch_is_soft_warning(self):
+        # Fee mismatch exceeding tolerance produces a soft warning
+        warnings = validate_committees_soft([make_committee(
+            committee_retainer_fee=50000, committee_allowances=0, committee_total_fee=47000
+        )])
+        assert any("committee_total_fee" in w for w in warnings)
 
     def test_fee_arithmetic_within_tolerance_not_error(self):
         # retainer=50001, total=50000, delta=1.0 — at boundary

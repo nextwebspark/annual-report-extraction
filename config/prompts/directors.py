@@ -193,6 +193,12 @@ This is a committee-level payment appearing in a dedicated committee remuneratio
 - If not stated in the remuneration table, inherit the functional currency from the consolidated financial statements
 - All monetary fields for a given director must use the same currency
 
+**Units:**
+- Always report monetary values in **actual (absolute) currency units** — never in thousands, millions, or billions
+- If the source table states values in thousands (e.g. "SAR thousands"), multiply each value by 1,000 before recording
+- If the source table states values in millions, multiply by 1,000,000
+- Record only the converted actual amount — never record the as-stated scaled figure
+
 ### Table Data Priority Rule (CRITICAL)
 
 When mapping remuneration table columns to DB fields:

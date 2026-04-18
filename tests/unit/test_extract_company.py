@@ -33,6 +33,7 @@ async def test_returns_expected_keys(mocker, memory_db):
     assert "company_id" in result
     assert "fact_id" in result
     assert "extracted" in result
+    assert "warnings" in result
 
 
 async def test_company_row_created_in_db(mocker, memory_db):
@@ -156,7 +157,7 @@ async def test_pre_seeded_company_returns_existing_id(mocker, memory_db):
         "company_name": {"value": "Acme Corp", "confidence": 0.99},
         "exchange": {"value": "NYSE", "confidence": 0.99},
         "country": {"value": "United States", "confidence": 0.99},
-        "industry": {"value": "Technology", "confidence": 0.99},
+        "sector": {"value": "Information Technology", "confidence": 0.99},
         "source_document_url": "",
         "company_code": "acme_corp",
     })
@@ -176,6 +177,69 @@ async def test_pre_seeded_company_returns_existing_id(mocker, memory_db):
 
 
 # ---------------------------------------------------------------------------
+# Fuzzy company matching
+# ---------------------------------------------------------------------------
+
+async def test_fuzzy_match_returns_existing_company(mocker, memory_db):
+    """LLM name drift within threshold links to existing company, no duplicate row."""
+    from config import settings
+
+    # Seed with canonical name
+    seed = memory_db.insert(settings.TABLE_COMPANIES, {
+        "company_name": {"value": "Acme Corp", "confidence": 0.99},
+        "exchange": {"value": "NYSE", "confidence": 0.99},
+        "country": {"value": "United States", "confidence": 0.99},
+        "sector": {"value": "Information Technology", "confidence": 0.99},
+        "source_document_url": "",
+        "company_code": "acme_corp",
+    })
+    seeded_id = seed[0]["id"]
+
+    # LLM returns a slightly different name (common suffix addition / article omission)
+    drifted = copy.deepcopy(COMPANY_LLM_RESPONSE)
+    drifted["company"]["company_name"]["value"] = "Acme Corporation"
+
+    mocker.patch(
+        "execution.extract_company.call_llm",
+        new_callable=AsyncMock,
+        return_value=_raw(drifted),
+    )
+    result = await extract_company("# Markdown", db=memory_db)
+
+    assert result["company_id"] == seeded_id
+    rows = memory_db.select(settings.TABLE_COMPANIES, "*", {})
+    assert len(rows) == 1  # no duplicate
+
+
+async def test_fuzzy_match_below_threshold_creates_new_company(mocker, memory_db):
+    """Name too dissimilar (below threshold) creates a separate company row."""
+    from config import settings
+
+    memory_db.insert(settings.TABLE_COMPANIES, {
+        "company_name": {"value": "Acme Corp", "confidence": 0.99},
+        "exchange": {"value": "NYSE", "confidence": 0.99},
+        "country": {"value": "United States", "confidence": 0.99},
+        "sector": {"value": "Information Technology", "confidence": 0.99},
+        "source_document_url": "",
+        "company_code": "acme_corp",
+    })
+
+    # Completely different company — should NOT fuzzy-match
+    different = copy.deepcopy(COMPANY_LLM_RESPONSE)
+    different["company"]["company_name"]["value"] = "Global Industries Ltd"
+
+    mocker.patch(
+        "execution.extract_company.call_llm",
+        new_callable=AsyncMock,
+        return_value=_raw(different),
+    )
+    await extract_company("# Markdown", db=memory_db)
+
+    rows = memory_db.select(settings.TABLE_COMPANIES, "*", {})
+    assert len(rows) == 2  # distinct companies
+
+
+# ---------------------------------------------------------------------------
 # Error handling
 # ---------------------------------------------------------------------------
 
@@ -189,8 +253,9 @@ async def test_llm_json_decode_error_propagates(mocker, memory_db):
         await extract_company("# Markdown", db=memory_db)
 
 
-async def test_schema_validation_failure_logs_warn_not_raise(mocker, memory_db):
-    """Schema validation failure is logged but function still returns."""
+async def test_schema_validation_failure_raises_and_blocks_write(mocker, memory_db):
+    """Schema validation failure raises jsonschema.ValidationError; nothing is written."""
+    import jsonschema
     bad_response = copy.deepcopy(COMPANY_LLM_RESPONSE)
     # minLength: 1 violated — triggers jsonschema.ValidationError
     bad_response["company"]["company_name"]["value"] = ""
@@ -200,5 +265,9 @@ async def test_schema_validation_failure_logs_warn_not_raise(mocker, memory_db):
         new_callable=AsyncMock,
         return_value=_raw(bad_response),
     )
-    result = await extract_company("# Markdown", db=memory_db)
-    assert result["fact_id"] is not None
+    with pytest.raises(jsonschema.ValidationError):
+        await extract_company("# Markdown", db=memory_db)
+
+    # No company row should have been created.
+    companies = memory_db.select("companies", "*", {})
+    assert companies == []

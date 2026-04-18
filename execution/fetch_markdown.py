@@ -10,32 +10,31 @@ import json
 import sys
 
 import structlog
-from supabase import create_client
 
 from config import settings
+from config.db import get_db
 
 log = structlog.get_logger()
 
 
-def fetch_markdown(record_id: int) -> dict:
+def fetch_markdown(record_id: int, db=None) -> dict:
     """Return the full landing_parse_cache row for record_id.
+
+    Args:
+        record_id: Primary key in settings.TABLE_LANDING_CACHE.
+        db:        Database instance. Auto-created via get_db() if None.
 
     Raises:
         RuntimeError: if record not found or markdown_llm_clean is empty.
     """
-    db = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
-    result = (
-        db.table(settings.TABLE_LANDING_CACHE)
-        .select("*")
-        .eq("id", record_id)
-        .single()
-        .execute()
-    )
+    if db is None:
+        db = get_db()
+    rows = db.select(settings.TABLE_LANDING_CACHE, "*", {"id": record_id}, limit=1)
 
-    if not result.data:
+    if not rows:
         raise RuntimeError(f"No record found in {settings.TABLE_LANDING_CACHE} for id={record_id}")
 
-    record = result.data
+    record = rows[0]
     if not record.get("markdown_llm_clean"):
         raise RuntimeError(
             f"Record {record_id} has no markdown_llm_clean. "

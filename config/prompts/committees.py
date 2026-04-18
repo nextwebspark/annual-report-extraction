@@ -184,6 +184,12 @@ These are additive and represent two different compensation events. Never merge 
 - If not stated, inherit the functional currency from the consolidated financial statements
 - All monetary fields for a given record must use the same currency
 
+**Units:**
+- Always report monetary values in **actual (absolute) currency units** — never in thousands, millions, or billions
+- If the source table states values in thousands (e.g. "SAR thousands"), multiply each value by 1,000 before recording
+- If the source table states values in millions, multiply by 1,000,000
+- Record only the converted actual amount — never record the as-stated scaled figure
+
 ### Table Data Priority Rule
 Extract fee values directly from committee remuneration table cells. Never infer or calculate committee fees from narrative policy descriptions (e.g., "each member receives 150,000"). The table contains the actual paid amounts which may differ from stated policy due to pro-rating, mid-year changes, or other adjustments. A statement that fees were "not paid", "not disbursed", or "not transferred" does NOT override the declared table cell value — extract the amounts and note the "not paid" status in `extraction_notes`. See Rule 2f.
 
