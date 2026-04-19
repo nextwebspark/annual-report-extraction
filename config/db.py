@@ -32,6 +32,8 @@ class SupabaseDB:
         return q.execute().data
 
     def upsert(self, table: str, rows: list[dict] | dict, on_conflict: str) -> list[dict]:
+        if isinstance(rows, list) and not rows:
+            return []
         return self._client.table(table).upsert(rows, on_conflict=on_conflict).execute().data
 
 
@@ -50,7 +52,6 @@ class SQLiteDB:
         self._conn = sqlite3.connect(path)
         self._conn.row_factory = sqlite3.Row
         self._init_tables()
-        self._migrate()
 
     def _init_tables(self):
         self._conn.executescript("""
@@ -132,23 +133,6 @@ class SQLiteDB:
             );
         """)
 
-    def _migrate(self):
-        """Add columns introduced after initial schema. Idempotent."""
-        migrations = [
-            "ALTER TABLE board_directors ADD COLUMN assembly_fee REAL DEFAULT 0",
-            "ALTER TABLE companies ADD COLUMN sector TEXT",
-            "ALTER TABLE companies ADD COLUMN sub_sector TEXT",
-            "ALTER TABLE company_facts ADD COLUMN revenue_band INTEGER",
-            "ALTER TABLE company_facts ADD COLUMN revenue_band_label TEXT",
-            "ALTER TABLE company_facts ADD COLUMN employee_band INTEGER",
-            "ALTER TABLE company_facts ADD COLUMN employee_band_label TEXT",
-        ]
-        for sql in migrations:
-            try:
-                self._conn.execute(sql)
-            except sqlite3.OperationalError:
-                pass  # column already exists
-
     def _serialize_row(self, row: dict) -> dict:
         """Serialize dict/list values to JSON strings for storage."""
         out = {}
@@ -171,10 +155,9 @@ class SQLiteDB:
         return d
 
     def select(self, table: str, columns: str, filters: dict, limit: int | None = None) -> list[dict]:
-        cols = columns if columns != "*" else "*"
         where_parts = [f"{col} = ?" for col in filters]
         where_clause = " AND ".join(where_parts) if where_parts else "1=1"
-        sql = f"SELECT {cols} FROM {table} WHERE {where_clause}"
+        sql = f"SELECT {columns} FROM {table} WHERE {where_clause}"
         if limit:
             sql += f" LIMIT {limit}"
         cursor = self._conn.execute(sql, list(filters.values()))
